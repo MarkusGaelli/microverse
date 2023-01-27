@@ -65,7 +65,7 @@ export function init(Constants) {
         {
             card: {
                 name: "drive code editor",
-                translation: [149.7867578489887, 1.3960140419134306, -91.04373902664706],
+                translation: [149.7867578489887, 1.05, -91.04373902664706],
                 rotation: [0, -0.8748879560491569, 0, 0.4843253703453173],
                 layers: ["pointer"],
                 type: "code",
@@ -73,7 +73,7 @@ export function init(Constants) {
                 textScale: 0.001,
                 margins: {left: 32, top: 32, right: 32, bottom: 32},
                 width: 1.5,
-                height: 3.0,
+                height: 2.3,
                 depth: 0.05,
                 backgroundColor: 0xdddddd,
                 frameColor: frameColor,
@@ -101,8 +101,8 @@ export function init(Constants) {
         {
             card: {
                 name:"porsche",
-                dataRotation: [-Math.PI / 2, -Math.PI / 2, 0],
-                translation: [143.31275751948277,  -0.5025376743590352, -92.18863795132113],
+                dataRotation: [-Math.PI / 2, Math.PI / 2, 0],
+                translation: [148,  -0.5025376743590352, -85],
                 dataScale: [0.0002660954536233986, 0.0002660954536233986, 0.0002660954536233986],
                 layers: ["pointer"],
                 type: "3d",
