@@ -3,6 +3,19 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+We generally group weekly changes into one dated entry on Fridays.
+
+## 2023-02-10
+### Added
+- show hit point in XR
+
+## Changed
+- user count now says "visitors"
+
+### Fixed
+- make pointer up/down/move events work again in XR
+- log errors during event handlers instead of crashing
+
 ## 2023-01-20
 ### Changed
 - clean up some demo files (and create library version 0.3.9).

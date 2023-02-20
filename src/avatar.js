@@ -185,11 +185,17 @@ export class AvatarActor extends mix(CardActor).with(AM_Player) {
 
     getLookFromAnchor() {
         let anchor = this._anchor;
-        if (!anchor || !anchor._cardData) {return null;}
+        let lookOffset = v3_zero();
+        let lookPitch = 0;
+        let lookYaw = 0;
+        if (!anchor || !anchor._cardData) {
+            return {lookOffset, lookPitch, lookYaw};
+        }
+
         let anchorData = anchor._cardData;
-        let lookOffset = anchorData.lookOffset == undefined ? v3_zero() : anchorData.lookOffset;
-        let lookPitch = anchorData.lookPitch == undefined ? 0 : anchorData.lookPitch;
-        let lookYaw = anchorData.lookYaw == undefined ? 0 : anchorData.lookYaw;
+        if (anchorData.lookOffset) {lookOffset = anchorData.lookOffset;}
+        if (anchorData.lookPitch) {lookPitch = anchorData.lookPitch;}
+        if (anchorData.lookYaw) {lookYaw = anchorData.lookYaw;}
         return {lookOffset, lookPitch, lookYaw};
     }
 
@@ -476,12 +482,11 @@ export class AvatarActor extends mix(CardActor).with(AM_Player) {
                 translation: m4_getTranslation(target.global),
                 name: 'gizmo',
                 behaviorModules: ["Gizmo"],
-                //parent: target.parent,
+                // parent: target.parent,
                 type: "object",
                 noSave: true,
             });
-            this.gizmo.target = target;
-            this.gizmo.creatorId = viewId;
+            this.gizmo.call("Gizmo$GizmoActor", "initializeGizmo", {parent: target.parent, target, creatorId: viewId});
         } else {
             this.publish(this.gizmo.id, "cycleModes");
         }
@@ -821,7 +826,7 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
                         return;
                     }
                     this.refreshCameraTransform();
-                    renderMgr.composer.render();
+                    renderMgr.render();
                     if (acknowledgeReceipt) sendToShell("primary-rendered");
                     break;
                 case "portal-camera-update":
@@ -1141,7 +1146,11 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
             userCountDisplay = c.firstChild;
             document.body.appendChild(userCountDisplay);
 
-            if (this.service("DolbyChatManager") && window.innerWidth >= 600) userCountDisplay.style.left = "40%";
+            if (this.service("DolbyChatManager") && window.innerWidth >= 600) {
+                userCountDisplay.style.left = "40%";
+            } else {
+                userCountDisplay.style.left = "50%";
+            }
         }
 
         let readout = userCountDisplay.querySelector("#userCountReadout");
@@ -1150,17 +1159,17 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
         // TODO: change PlayerManager to only create avatars for players that are actually in the world
         let total = manager.players.size;
         let here = manager.playersInWorld().length;
-        let suffix = here === 1 ? "user" : "users";
-        let tooltip = `${here} ${here === 1 ? "user is" : "users are"} in this world`;
+        let suffix = here === 1 ? "visitor" : "visitors";
+        let tooltip = `${here} ${here === 1 ? "visitor is" : "visitors are"} in this world`;
         if (here !== total) {
             let watching = total - here;
-            tooltip += `, ${watching} ${watching === 1 ? "user has" : "users have"} not entered yet`;
+            tooltip += `, ${watching} ${watching === 1 ? "visitor has" : "visitors have"} not entered yet`;
             total = `${here}+${watching}`;
         }
         if (manager.presentationMode) {
             let followers = manager.followers.size; // includes the presenter
             readout.textContent = `${followers}/${total} ${suffix}`;
-            tooltip = `${followers} ${followers === 1 ? "user" : "users"} in guided tour, ${tooltip}`;
+            tooltip = `${followers} ${followers === 1 ? "visitor" : "visitors"} in guided tour, ${tooltip}`;
         } else {
             readout.textContent = `${total} ${suffix}`;
         }
@@ -1467,6 +1476,8 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
         let vv = m4_getTranslation(inv);
         let rr = m4_getRotation(inv);
 
+        vv[1] += 1.6; // eye height
+
         let offsetTransform = new XRRigidTransform(
             {x: vv[0], y: vv[1], z: vv[2]},
             {x: rr[0], y: rr[1], z: rr[2], w: rr[3]});
@@ -1539,7 +1550,7 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
             // so it will reorder any frames.
             if (force && !secondaryRenders) {
                 console.log(frameName(), "no portals in sight; rendering immediately");
-                renderMgr.composer.render();
+                renderMgr.render();
                 sendToShell("primary-rendered");
             }
         } else {
@@ -1565,7 +1576,7 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
             initialPortalLookExternal = cameraMatrix;
             if (!this.isPrimary && !this.frozenForWorldSwitch) {
                 this.refreshCameraTransform();
-                renderMgr.composer.render();
+                renderMgr.render();
                 sendToShell("portal-world-rendered");
             }
         }
@@ -1667,18 +1678,23 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
 
             segment.applyMatrix4(iMat);
             cBox.applyMatrix4(iMat);
+            let scaleVector = new THREE.Vector3();
+            scaleVector.setFromMatrixScale(iMat);
+            let scaledRadius = Math.abs(radius * scaleVector.x);
+            // so, this have to be changed to allow non-uniform scaling. a warped semisphere still should tell
+            // you where the closest hit is, and gives the capsule the right direction and distance.
+            // it'd have to do something else to make it work that way thoguh.
 
             let directions = [];
             // let start = Date.now();
-
             let maybeUp;
 
             c.children[0].geometry.boundsTree.shapecast({
                 intersectsBounds: box => box.intersectsBox(cBox),
                 intersectsTriangle: tri => {
                     const distance = tri.closestPointToSegment(segment, triPoint, capsulePoint);
-                    if (distance < radius) {
-                        const depth = radius - distance;
+                    if (distance < scaledRadius) {
+                        const depth = scaledRadius - distance;
                         const direction = capsulePoint.sub(triPoint).normalize();
 
                         let h = Math.sqrt(direction.x ** 2 + direction.z ** 2);
@@ -1696,8 +1712,8 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
 
             directions.forEach((tri) => {
                 const distance = tri.closestPointToSegment(segment, triPoint, capsulePoint);
-                if (distance < radius) {
-                    let depth = radius - distance;
+                if (distance < scaledRadius) {
+                    let depth = scaledRadius - distance;
                     const direction = capsulePoint.sub(triPoint).normalize();
 
                     // there is an issue when you double click a too low point, but it is
@@ -1921,7 +1937,7 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
     addSticky(e) {
         if (e.shiftKey) {
             const render = this.service("ThreeRenderManager");
-            const rc = this.pointerRaycast(e.xy, render.threeLayerUnion('pointer', 'walk'));
+            const rc = this.pointerRaycast(e, render.threeLayerUnion("pointer", "walk"));
             let pe = this.pointerEvent(rc, e);
             this.say("addSticky", pe);
         }
@@ -1946,7 +1962,7 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
 
     pointerDown(e) {
         let render = this.service("ThreeRenderManager");
-        let rc = this.pointerRaycast(e.xy, render.threeLayerUnion("pointer"));
+        let rc = this.pointerRaycast(e, render.threeLayerUnion("pointer"));
         this.targetDistance = rc.distance;
         let p3e = this.pointerEvent(rc, e);
         let pawn = GetPawn(p3e.targetId);
@@ -1980,7 +1996,7 @@ export class AvatarPawn extends mix(CardPawn).with(PM_Player, PM_SmoothedDriver,
                 this.gizmoTargetPawn.unselectEdit();
                 this.gizmoTargetPawn = null;
                 this.publish(this.actor.id, "removeGizmo");
-            } else {
+            } else if (e.xy) {
                 this.dragWorld = this.xy2yp(e.xy);
                 this.lookYaw = q_yaw(this._rotation);
             }
