@@ -78,11 +78,8 @@
     font-weight: bold;
 }
 
-.promptBlurb {
-    font-size: 13px;
-    line-height: 20px;
-    margin-top: 13px;
-    margin-bottom: 13px;
+.promptBlurb, .share-settings-label {
+    margin: 15px 0px 15px 0px;
 }
 
 .stringInputHolder {
@@ -159,7 +156,7 @@
 .btn-danger {
     color: #fff;
     background-color: #dc3545;
-    border-color: #dc3545;
+    border: 1px solid #620a13;
 }
 
 .btn-danger:hover {
@@ -341,6 +338,12 @@
 
 #toggleConnection:hover > .notJoined {
     background-color: #218838;
+}
+
+@media (max-width: 750px){
+    #connection-tooltip{
+        display: none;
+    }
 }
 
 #connection-tooltip {
@@ -865,11 +868,6 @@
     font-size: 13px;
 }
 
-.share-settings-label {
-    margin-bottom: 10px;
-    margin-top: 20px;
-}
-
 .share-menu-row {
     display: flex;
     margin-bottom: 10px;
@@ -894,11 +892,6 @@
         margin-right: auto;
         flex-direction: column;
         justify-content: space-around;
-    }
-
-    .content-container {
-        width: 95%;
-        height: 95%;
     }
 
     #dialogAvatarSelections {
@@ -931,10 +924,6 @@
 
     .handedness-label {
         font-size: 12px;
-    }
-
-    #share-qr {
-        display: none;
     }
 
     .topright {
@@ -997,8 +986,6 @@
     }
 
     .copy-link {
-        font-size: 12px;
-        height: 14px;
         border: 1px solid grey;
         border-radius: 10px;
         display: flex;

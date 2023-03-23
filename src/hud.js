@@ -53,7 +53,7 @@ function loadPressed(myAvatar) {
 
     imageInput.click();
     if (worldMenuVisible) {
-        toggleMenu();
+        toggleMenu(myAvatar);
     }
 }
 
@@ -83,27 +83,31 @@ function connectPressed(myAvatar) {
 }
 
 function settingsPressed(myAvatar) {
+    if (worldMenuVisible) {
+        toggleMenu(myAvatar);
+    }
     if (myAvatar) {
         myAvatar.showSettingsMenu();
-        sendToShell("hud", { joystick: false, fullscreen: false });
     }
-    toggleMenu();
+    sendToShell("hud", { joystick: false, fullscreen: false });
 }
 
 function sharePressed(myAvatar) {
+    if (worldMenuVisible) {
+        toggleMenu(myAvatar);
+    }
     if (myAvatar) {
         myAvatar.showShareMenu();
-        sendToShell("hud", { joystick: false, fullscreen: false });
     }
-    toggleMenu();
 }
 
 function helpPressed(myAvatar) {
+    if (worldMenuVisible) {
+        toggleMenu(myAvatar);
+    }
     if (myAvatar) {
         myAvatar.showHelpMenu();
-        sendToShell("hud", { joystick: false, fullscreen: false });
     }
-    toggleMenu();
 }
 
 function switchQRView(_myAvatar) {
@@ -133,7 +137,7 @@ function switchQRView(_myAvatar) {
 function forceStop(myAvatar) {
     myAvatar.say("stopPresentation");
     if (worldMenuVisible) {
-        // toggleMenu();
+        // toggleMenu(myAvatar);
     }
 }
 
@@ -152,7 +156,7 @@ function initWorldMenu(badge) {
     <span class="menu-label-text" id="connectBtn">Connect</span>
 </div>
 <div id="worldMenu-gather" class="menu-label menu-item">
-    <i class="fa-solid fa-users-viewfinder menu-icon"></i>
+    <i class="fas fa-solid fa-users menu-icon"></i>
     <span class="menu-label-text">Gather</span>
 </div>
 <div id="worldMenu-settings" class="menu-label menu-item">
@@ -188,31 +192,28 @@ function initWorldMenu(badge) {
 
     worldMenu = html;
 
+    if (fullscreen) {
+        fullscreen.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
 
-
-if (fullscreen) {
-    fullscreen.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (e.shiftKey) {
-            document.body.classList.toggle("tilt");
-            return;
-        }
-
-        if (!document.fullscreenElement) {
-            // If the document is not in full screen mode
-            // make the document full screen
-            document.body.requestFullscreen();
-        } else {
-            // Otherwise exit the full screen
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
+            if (e.shiftKey) {
+                document.body.classList.toggle("tilt");
+                return;
             }
-        }
-    }
-}
 
+            if (!document.fullscreenElement) {
+                // If the document is not in full screen mode
+                // make the document full screen
+                document.body.requestFullscreen();
+            } else {
+                // Otherwise exit the full screen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        };
+    }
 
     filterDomEventsOn(worldMenu);
     worldMenuVisible = false;
@@ -229,11 +230,11 @@ function hudButtons(myAvatar) {
         <div id="worldMenu-shareButton" class="btn btn-ui">
             <i class="fas fa-user-plus"></i>
         </div>
-        <div id="worldMenuBtn" class="btn btn-ui">
-            <i class="fa fa-solid fa-bars no-pointer-events"></i>
-        </div>
         <div id="worldMenu-helpButton" class="btn btn-ui">
             <i class="fas fa-question-circle"></i>
+        </div>
+        <div id="worldMenuBtn" class="btn btn-ui">
+            <i class="fa fa-solid fa-bars no-pointer-events"></i>
         </div>
         `;
 
@@ -246,8 +247,8 @@ function hudButtons(myAvatar) {
     let help = div.querySelector("#worldMenu-helpButton");
 
     html.appendChild(home);
-    html.appendChild(share);
     html.appendChild(menu);
+    html.appendChild(share);
     html.appendChild(help);
 
     div = document.querySelector("#worldMenu-shareButton");
@@ -303,7 +304,7 @@ function setMenuItems(myAvatar) {
     div = gatherItem;
     if (div) {
         div.onclick = () => {
-            // toggleMenu();
+            // toggleMenu(myAvatar);
             if (myAvatar.actor.service("PlayerManager").presentationMode) {
                 forceStop(myAvatar);
             } else {

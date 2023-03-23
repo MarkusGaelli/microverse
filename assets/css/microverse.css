@@ -171,7 +171,6 @@ body.tilt > iframe {
     border-radius: 10px;
     background-color: white;
     cursor: pointer;
-    width: 50%;
 }
 
 /* .menu-item {
@@ -465,11 +464,11 @@ button#VRButton {
     }
 
     #worldMenuBtn:hover {
-        background-image: url("../images/right.png");
+        background-image: url("../images/left.png");
     }
 
     #worldMenu-shareButton:hover {
-        background-image: url("../images/left.png");
+        background-image: url("../images/right.png");
     }
 }
 
