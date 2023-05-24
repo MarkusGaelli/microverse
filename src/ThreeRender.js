@@ -24,7 +24,7 @@ import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm//webxr/XRControllerModelFactory.js';
 
-import { PM_Visible, PM_Camera, RenderManager } from "@croquet/worldcore-kernel";
+import { PM_Visible, PM_Camera, RenderManager } from "./worldcore";
 
 //------------------------------------------------------------------------------------------
 //-- ThreeVisible  -------------------------------------------------------------------------
@@ -107,7 +107,7 @@ const PM_ThreeCamera = superclass => class extends PM_Camera(superclass) {
         render.camera.matrixWorldNeedsUpdate = true;
     }
 
-    setRayCast(xy) {
+    setRaycastFrom2D(xy) {
         const x = ( xy[0] / window.innerWidth ) * 2 - 1;
         const y = - ( xy[1] / window.innerHeight ) * 2 + 1;
         const render = this.service("ThreeRenderManager");
@@ -118,18 +118,37 @@ const PM_ThreeCamera = superclass => class extends PM_Camera(superclass) {
         return this.raycaster;
     }
 
-    setXRRayCast(xrEvent) {
+    setRaycastFrom3D(xrController) {
         let vec = new THREE.Vector3(0, 0, -1);
-        vec.applyEuler(xrEvent.target.rotation);
+        vec.applyEuler(xrController.rotation);
         if (!this.raycaster) this.raycaster = new THREE.Raycaster();
-        this.raycaster.set(xrEvent.target.position, vec);
+        this.raycaster.set(xrController.position, vec);
+    }
+
+    setRaycastFromRay(ray) {
+        if (!this.raycaster) this.raycaster = new THREE.Raycaster();
+        let {origin, direction} = ray;
+        if (Array.isArray(origin)) {
+            origin = new THREE.Vector3(...origin);
+            direction = new THREE.Vector3(...direction);
+        }
+        this.raycaster.set(origin, direction);
     }
 
     pointerRaycast(source, targets, optStrictTargets) {
-        if (Array.isArray(source)) {
-            this.setRayCast(source);
+        if (source.source) source = source.source;
+        if (source.ray) {
+            this.setRaycastFromRay(source.ray);
+        } else if (source.xy) {
+            this.setRaycastFrom2D(source.xy);
+        } else if (source.origin) {
+            this.setRaycastFromRay(source);
+        } else if (Array.isArray(source)) {
+            this.setRaycastFrom2D(source);
+        } else if (source.position) {
+            this.setRaycastFrom3D(source);
         } else {
-            this.setXRRayCast(source);
+            throw new Error("Unknown raycast source", source);
         }
         const render = this.service("ThreeRenderManager");
         const h = this.raycaster.intersectObjects(targets || render.threeLayer("pointer"));
@@ -186,6 +205,7 @@ const PM_ThreeCamera = superclass => class extends PM_Camera(superclass) {
             uv: hit.uv ? hit.uv.toArray() : undefined,
             normal: normal ? normal.toArray() : undefined,
             distance: hit.distance,
+            instanceId: hit.instanceId,
             ray: this.raycaster.ray.clone()
         };
     }
@@ -210,15 +230,14 @@ class XRController {
         this.manager = manager;
         this.controllerModelFactory = new XRControllerModelFactory();
 
-        this.raycaster = new THREE.Raycaster();
-
         function selectStart(controller, evt) {
             if (manager.avatar) {
                 let e = {
+                    type: "xr",
                     button: 0,
                     buttons: 1,
                     id: 1,
-                    source: evt,
+                    source: controller,
                 };
                 manager.avatar.doPointerDown(e);
             }
@@ -229,10 +248,11 @@ class XRController {
         function selectEnd(controller, evt) {
             if (manager.avatar) {
                 let e = {
+                    type: "xr",
                     button: 0,
                     buttons: 1,
                     id: 1,
-                    source: evt,
+                    source: controller,
                 };
                 if (controller.userData.pointerDownTime) {
                     let now = Date.now();
@@ -285,11 +305,23 @@ class XRController {
 
         switch (data.targetRayMode) {
             case 'tracked-pointer':
+                // ray
                 geometry = new THREE.BufferGeometry();
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, - 1 ], 3));
-                geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5, 0, 0, 0], 3));
-                material = new THREE.LineBasicMaterial({vertexColors: true, blending: THREE.AdditiveBlending});
-                return new THREE.Line(geometry, material);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0,  0, 0, -1], 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1,  1, 1, 1, 0], 4));
+                material = new THREE.LineBasicMaterial({vertexColors: true, transparent: true});
+                let rayMesh = new THREE.Line(geometry, material);
+                // hit
+                geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                let map = new THREE.TextureLoader().load('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAVFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD///8TExN5eXllZWWmpqb19fUHBwc2Njapqand3d08PDwrKyvx8fHLijeGAAAADnRSTlMA6QVM+caA65JXA5YQrBYZ/8UAAADDSURBVHjalZPZDoIwEAAtUG6mpdzw//9powYBSzbO606y9+MPojjXKkmUzuMoEK7TjJ0sra/xQgHD4trWLQOgilO4rICx682LvhuBqjzEG7CTOTBZaL5GBetsTswrVHt+WDdzYVuh+NSvsLP5Ybaody8pTCbABOlrPhmjCTKSRV6IoQsLHcReyBn6sNAP5F7QLOaGBe0FhbsTHMoLCe2d0JKIgphCLFJsUxyUOGppWeK6pYORTk48WvHs5ceRX09+XpknoLkqeUcuWxIAAAAASUVORK5CYII=');
+                material = new THREE.PointsMaterial({map, size: 8, sizeAttenuation: false, depthTest: false, transparent: true});
+                let hitMesh = new THREE.Points(geometry, material);
+                hitMesh.renderOrder = 10000;
+                hitMesh.visible = false;
+                this[`controllerRay${i}`] = rayMesh;
+                this[`controllerHit${i}`] = hitMesh;
+                return new THREE.Group().add(rayMesh, hitMesh);
             case 'gaze':
                 geometry = new THREE.RingGeometry(0.02, 0.04, 32).translate(0, 0, -1);
                 material = new THREE.MeshBasicMaterial({opacity: 0.5, transparent: true});
@@ -299,6 +331,8 @@ class XRController {
     }
 
     update(avatar) {
+        // move avatar using gamepad
+
         let dx = 0;
         let dy = 0;
         dx += this.gamepad0?.axes[2] || 0;
@@ -320,24 +354,51 @@ class XRController {
         }
         this.lastDelta = [dx, dy];
 
+        // generate move events
+
+        let hit;
         if (this.controller0.userData.pointerDown) {
             let e = {
+                type: "xr",
                 button: 0,
                 buttons: 1,
                 id: 1,
-                source: {target: this.controller0}
+                source: this.controller0,
             };
-            avatar.doPointerMove(e);
+            hit = avatar.doPointerMove(e);
+        } else if (this.controllerHit0) {
+            hit = avatar.pointerRaycast(this.controller0);
+        }
+
+        if (this.controllerHit0) {
+            if (hit.pawn && hit.distance) {
+                this.controllerHit0.visible = true;
+                this.controllerHit0.position.z = -hit.distance;
+            } else {
+                this.controllerHit0.visible = false;
+            }
         }
 
         if (this.controller1.userData.pointerDown) {
             let e = {
+                type: "xr",
                 button: 0,
                 buttons: 1,
                 id: 1,
-                source: {target: this.controller1}
+                source: this.controller1,
             };
-            avatar.doPointerMove(e);
+            hit = avatar.doPointerMove(e);
+        } else if (this.controllerHit1) {
+            hit = avatar.pointerRaycast(this.controller1);
+        }
+
+        if (this.controllerHit1) {
+            if (hit.pawn && hit.distance) {
+                this.controllerHit1.visible = true;
+                this.controllerHit1.position.z = -hit.distance;
+            } else {
+                this.controllerHit1.visible = false;
+            }
         }
     }
 }
@@ -384,6 +445,7 @@ class ThreeRenderManager extends RenderManager {
 
         this.renderer = new THREE.WebGLRenderer(options);
         this.renderer.shadowMap.enabled = true;
+        // this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
         this.vrButtonStyleSet = false;
 
@@ -477,6 +539,8 @@ class ThreeRenderManager extends RenderManager {
         super.destroy();
         this.renderer.dispose();
         if (this.canvas) this.canvas.remove();
+        if (this.vrButton) this.vrButton.remove();
+        if (this.observer) this.observer.disconnect();
     }
 
     resize() {
@@ -513,13 +577,17 @@ class ThreeRenderManager extends RenderManager {
         return result;
     }
 
+    render() {
+        if (this.composer) {
+            this.composer.render();
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
+    }
+
     update() {
         if (this.doRender) {
-            if (this.composer) {
-                this.composer.render();
-            } else {
-                this.renderer.render(this.scene, this.camera);
-            }
+            this.render();
         }
 
         if (this.xrController && this.avatar) {

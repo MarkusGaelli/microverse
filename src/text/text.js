@@ -2,7 +2,7 @@
 // https://croquet.io
 // info@croquet.io
 
-import {ModelService, ViewService, GetPawn, v3_transform} from "@croquet/worldcore-kernel";
+import {ModelService, ViewService, GetPawn, v3_transform} from "../worldcore";
 import {THREE} from "../ThreeRender.js";
 import {getTextGeometry, HybridMSDFShader, MSDFFontPreprocessor, getTextLayout} from "@croquet/hybrid-msdf-text";
 import {CardActor, CardPawn} from "../card.js";
@@ -82,7 +82,8 @@ export class KeyFocusManager extends ViewService {
         }
         this.keyboardInput = obj;
         if (obj) {
-            this.hiddenInput.focus();
+            setTimeout(() => this.hiddenInput.focus(), 0);
+
         }
     }
 
@@ -215,7 +216,7 @@ export class FontViewManager extends ViewService {
         if (this.isLoading[name]) {return this.isLoading[name];}
 
         let root = window.microverseDir ? window.microverseDir : "./";
-        
+
         let path = root + "assets/fonts";
         let image = `${path}/${name}.png`;
 
@@ -1196,7 +1197,7 @@ export class TextFieldPawn extends CardPawn {
         }
 
         if (!sel) {
-            let bar = new THREE.Mesh(new THREE.PlaneBufferGeometry(0.1, 0.1), new THREE.MeshBasicMaterial({color}));
+            let bar = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.1), new THREE.MeshBasicMaterial({color}));
             bar.visible = false;
             this.plane.add(bar);
             bar.name = "caret";
@@ -1204,7 +1205,7 @@ export class TextFieldPawn extends CardPawn {
 
             let boxes = [];
             for (let i = 0; i < 3; i++) {
-                let box = new THREE.Mesh(new THREE.PlaneBufferGeometry(0, 0), new THREE.MeshBasicMaterial({color}));
+                let box = new THREE.Mesh(new THREE.PlaneGeometry(0, 0), new THREE.MeshBasicMaterial({color}));
                 box.visible = false;
                 box.name = `box${i}`;
                 box.onBeforeRender = () => this.selectionBeforeRender(box);
@@ -1245,7 +1246,7 @@ export class TextFieldPawn extends CardPawn {
                 caret.visible = true;
                 let caretRect = this.warota.barRect(selection);
                 caretRect.width = ts <= 0.001 ? 5 : 2;
-                let geom = new THREE.PlaneBufferGeometry(caretRect.width * ts, caretRect.height * ts);
+                let geom = new THREE.PlaneGeometry(caretRect.width * ts, caretRect.height * ts);
                 let old = caret.geometry;
                 caret.geometry = geom;
                 if (old) {
@@ -1277,7 +1278,7 @@ export class TextFieldPawn extends CardPawn {
                         let rWidth = rect.width * ts; // ?
                         let rHeight = rect.height * ts;
 
-                        let geom = new THREE.PlaneBufferGeometry(rWidth, rHeight, 2, 2);
+                        let geom = new THREE.PlaneGeometry(rWidth, rHeight, 2, 2);
                         box.geometry = geom;
                         box.position.set(left, top, depth + 0.001);
                         box.visible = true;

@@ -2,7 +2,7 @@
 // https://croquet.io
 // info@croquet.io
 
-import { App } from "@croquet/worldcore-kernel";
+import { App } from "@croquet/croquet";
 
 // shared prefix for shell messages
 const PREFIX = "croquet:microverse:";
@@ -462,6 +462,11 @@ class Shell {
         let fullscreenFlag = data.fullscreen;
         if (!document.head.querySelector("#joystick-css")) {
             this._hudFlags = {joystick: data.joystick, fullscreen: data.fullscreen};
+        }
+        // work around pointer capture bug on Quest
+        if (navigator.userAgent.indexOf("OculusBrowser") !== -1) {
+            joystickFlag = false;
+            fullscreenFlag = false;
         }
         if (joystickFlag !== undefined && this.joystick) {
             if (joystickFlag) {

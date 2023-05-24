@@ -10,10 +10,10 @@ import {
     v3_dot, v3_cross, v3_sub, v3_add, v3_normalize, v3_magnitude, v3_sqrMag, v3_transform, v3_rotate,
     q_euler, q_multiply,
     m4_invert, m4_identity
-} from '@croquet/worldcore-kernel';
+} from './worldcore';
 import { THREE, THREE_MESH_BVH, PM_ThreeVisible } from './ThreeRender.js';
 import { AM_PointerTarget, PM_PointerTarget } from './Pointer.js';
-import { addMeshProperties, normalizeSVG, addTexture } from './assetManager.js'
+import { addMeshProperties, normalizeSVG, addTexture, toIndexed } from './assetManager.js'
 import { TextFieldActor } from './text/text.js';
 import { DynamicTexture } from './DynamicTexture.js'
 import { AM_Code, PM_Code } from './code.js';
@@ -251,6 +251,16 @@ export class CardActor extends mix(Actor).with(AM_Smoothed, AM_PointerTarget, AM
         this.subscribe(this.id, message, method);
     }
 
+    rotateTo(rotation) {
+        // rotation is either a 3 value array, a 4 value array, or a number.
+        // if it is a 3-value array, it is interpreted as an euler angle.
+        // if it is a 4-value array, it is interpreted as a quaternion.
+        // if it is a number, it is interpreted as [0, rotation, 0].
+        if (typeof rotation === "number") rotation = [0, rotation, 0];
+        let q = rotation.length === 3 ? q_euler(...rotation) : rotation;
+        return super.rotateTo(q);
+    }
+
     rotateBy(amount) {
         // amount is either a 3 value array, a 4 value array, or a number.
         // if it is a 3-value array, it is interpreted as an euler angle.
@@ -259,26 +269,36 @@ export class CardActor extends mix(Actor).with(AM_Smoothed, AM_PointerTarget, AM
         if (typeof amount === "number") amount = [0, amount, 0];
         let q = amount.length === 3 ? q_euler(...amount) : amount;
         let newQ = q_multiply(this.rotation, q);
-        this.rotateTo(newQ);
+        super.rotateTo(newQ);
+    }
+
+    translateTo(pos) {
+        // pos is a 3 value array that represents the new xyz position
+        return super.translateTo(pos);
     }
 
     translateBy(dist) {
-        // dist is either a 3-value array or a number.
-        // if it is a 3-value array, it specifies the offset.
-        // if it is a number, it is interpreted as [0, 0, dist].
-        let offset = Array.isArray(dist) ? dist : [0, 0, dist];
+        // dist is a 3-value array.
         let t = this.translation;
-        this.translateTo([t[0] + offset[0], t[1] + offset[1], t[2] + offset[2]]);
+        super.translateTo([t[0] + dist[0], t[1] + dist[1], t[2] + dist[2]]);
     }
 
     forwardBy(dist) {
         // dist is either a 3-value array or a number.
         // if it is a 3-value array, it specifies the offset, in the reference frame of the receiver.
-        // if it is a number, it is interpreted as [0, 0, dist].
+        // if it is a number, it is interpreted as [0, 0, dist] to be the offset, in the reference frame of the receiver.
         let offset = Array.isArray(dist) ? dist : [0, 0, dist];
         let vec = v3_rotate(offset, this.rotation)
         let t = this.translation;
-        this.translateTo([t[0] + vec[0], t[1] + vec[1], t[2] + vec[2]]);
+        super.translateTo([t[0] + vec[0], t[1] + vec[1], t[2] + vec[2]]);
+    }
+
+    scaleTo(factor) {
+        // factor is either a 3-value array or a number.
+        // if it is a 3-value array, it specifies the difference.
+        // if it is a number, it is interpreted as [factor, factor, factor].
+        let scale = Array.isArray(factor) ? factor : [factor, factor, factor];
+        super.scaleTo(scale);
     }
 
     scaleBy(factor) {
@@ -287,7 +307,7 @@ export class CardActor extends mix(Actor).with(AM_Smoothed, AM_PointerTarget, AM
         // if it is a number, it is interpreted as [factor, factor, factor].
         let offset = Array.isArray(factor) ? factor : [factor, factor, factor];
         let cur = this.scale;
-        this.scaleTo([cur[0] + offset[0], cur[1] + offset[1], cur[2] + offset[2]]);
+        super.scaleTo([cur[0] + offset[0], cur[1] + offset[1], cur[2] + offset[2]]);
     }
 
     nop() {}
@@ -355,8 +375,7 @@ export class CardActor extends mix(Actor).with(AM_Smoothed, AM_PointerTarget, AM
     intrinsicProperties() {return intrinsicProperties;}
 
     saySelectEdit(editBox) {
-        console.log("saySelectEdit says doSelectEdit", editBox);
-        this.editBox = editBox;
+        this.editBox = editBox; // used only by the pedestal
         this.say("doSelectEdit");
     }
 
@@ -447,6 +466,8 @@ export class CardActor extends mix(Actor).with(AM_Smoothed, AM_PointerTarget, AM
                     actor.subscribe(behavior.id, "setCode", "loadAndReset");
                 }
 
+                actor.initBehaviors(options);
+
                 return actor;
             });
         }
@@ -508,7 +529,6 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
         this.animationInterval = null;
         this.subscribe(this.id, "3dModelLoaded", this.tryStartAnimation);
         this.constructCard();
-        this._editMode = false; // used to determine if we should ignore pointer events
     }
 
     sayDeck(message, vars) {
@@ -706,7 +726,7 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
             this.placeholder = mesh;
             this.placeholder.position.set(...offset);
             this.placeholder.name = "placeholder";
-            if (this.actor.layers.indexOf('walk') >= 0) {
+            if (this.actor.layers.indexOf("walk") >= 0) {
                 this.constructCollider(this.placeholder);
             }
             this.shape.add(this.placeholder);
@@ -721,8 +741,10 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
         if (!model3d || this._model3dLoading === model3d) {return;}
 
         this._model3dLoading = model3d;
-        this.getBuffer(model3d).then((buffer) => {
-            assetManager.setCache(model3d, buffer, this.id);
+        assetManager.fillCacheIfAbsent(model3d, () => {
+            let b = this.getBuffer(model3d);
+            return b;
+        }, this.id).then((buffer) => {
             return assetManager.load(buffer, modelType, THREE);
         }).then((obj) => {
             if (model3d !== this._model3dLoading) {
@@ -757,7 +779,7 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
             }
             let fullBright = options.fullBright !== undefined ? options.fullBright : false;
             addMeshProperties(obj, shadow, singleSided, noFog, fullBright, THREE);
-            if (this.actor.layers.indexOf('walk') >= 0) {
+            if (this.actor.layers.indexOf("walk") >= 0) {
                 this.constructCollider(obj);
             }
 
@@ -775,12 +797,16 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
 
             delete this._model3dLoading;
             publishLoaded();
-        }).catch(_err => {
+        }).catch((e) => {
+            console.error(e.message, model3d);
+            this.say("assetLoadError", {message: e.message, path: model3d});
             delete this._model3dLoading;
         });
     }
 
     construct2D(options) {
+        let assetManager = this.service("AssetManager").assetManager;
+
         let dataLocation = options.dataLocation;
         let textureLocation = options.textureLocation;
         let textureType = options.textureType;
@@ -822,7 +848,10 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
             this.video.muted = muted;
             this.video.loop = loop;
             this.video.controls = false;
-            texturePromise = this.getBuffer(textureLocation).then((buffer) => {
+
+            texturePromise = assetManager.fillCacheIfAbsent(textureLocation, () => {
+                return this.getBuffer(textureLocation);
+            }, this.id).then((buffer) => {
                 let objectURL = URL.createObjectURL(new Blob([buffer], {type: "video/mp4"}));
                 this.video.src = objectURL;
                 this.video.preload = "metadata";
@@ -852,24 +881,28 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
                     height: this.video.height,
                     texture: this.texture
                 }
+            }).catch((e) => {
+                console.error(e.message, textureLocation);
+                this.say("assetLoadError", {message: e.message, path: textureLocation});
             });
         } else if (textureType === "image") {
-            texturePromise = this.getBuffer(textureLocation).then((bufferOrObj) => {
-                if (bufferOrObj.texture) {
-                    this.texture = bufferOrObj.texture;
-                    return Promise.resolve(bufferOrObj);
-                }
-                let objectURL = URL.createObjectURL(new Blob([bufferOrObj]));
-                this.objectURL = objectURL;
-                return new Promise((resolve, reject) => {
-                    this.texture = new THREE.TextureLoader().load(
-                        objectURL,
-                        (texture) => {
-                            URL.revokeObjectURL(objectURL);
-                            resolve({width: texture.image.width, height: texture.image.height, texture})
-                        }, null, reject);
+            texturePromise = assetManager.fillCacheIfAbsent(textureLocation, () =>
+                this.getBuffer(textureLocation), this.id)
+                .then((buffer) => {
+                    let objectURL = URL.createObjectURL(new Blob([buffer]));
+                    this.objectURL = objectURL;
+                    return new Promise((resolve, reject) => {
+                        this.texture = new THREE.TextureLoader().load(
+                            objectURL,
+                            (texture) => {
+                                URL.revokeObjectURL(objectURL);
+                                resolve({width: texture.image.width, height: texture.image.height, texture})
+                            }, null, reject);
+                    });
+                }).catch((e) => {
+                    console.error(e.message, textureLocation);
+                    this.say("assetLoadError", {message: e.message, path: textureLocation});
                 });
-            });
         } else if (textureType === "canvas") {
             this.canvas = document.createElement("canvas");
             this.canvas.id = name;
@@ -894,30 +927,39 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
             depth,
         };
 
-        let assetManager = this.service("AssetManager").assetManager;
-
         if (dataLocation) {
-            return this.getBuffer(dataLocation).then((buffer) => {
-                assetManager.setCache(dataLocation, buffer, this.id);
-                return assetManager.load(buffer, "svg", THREE, loadOptions);
-            }).then((obj) => {
-                normalizeSVG(obj, depth, shadow, THREE);
-                return obj;
-            }).then((obj) => {
-                if (this.texture) {
-                    addTexture(obj, this.texture);
-                }
-                if (options.dataTranslation) {
-                    obj.position.set(...options.dataTranslation);
-                }
-                obj.name = "2d";
-                if (Array.isArray(obj.material)) {
-                    obj.material.dispose = arrayDispose;
-                }
-                this.objectCreated(obj);
-                this.shape.add(obj);
-                publishLoaded();
-            });
+            assetManager.fillCacheIfAbsent(
+                dataLocation,
+                () => this.getBuffer(dataLocation),
+                this.id)
+                .then((buffer) => assetManager.load(buffer, "svg", THREE, loadOptions))
+                .then((obj) => {
+                    normalizeSVG(obj, depth, shadow, THREE);
+                    // this is not working for SVGs
+                    // let geometry = toIndexed(obj.children[0].geometry, THREE, true);
+                    // obj.children[0].geometry = geometry;
+                    return obj;
+                }).then((obj) => {
+                    if (this.texture) {
+                        addTexture(obj, this.texture);
+                    }
+                    if (options.dataTranslation) {
+                        obj.position.set(...options.dataTranslation);
+                    }
+                    obj.name = "2d";
+                    if (Array.isArray(obj.material)) {
+                        obj.material.dispose = arrayDispose;
+                    }
+                    this.objectCreated(obj);
+                    this.shape.add(obj);
+                    if (this.actor.layers.indexOf("walk") >= 0) {
+                        this.constructCollider(obj);
+                    }
+                    publishLoaded();
+                }).catch((e) => {
+                    console.error(e.message, dataLocation);
+                    this.say("assetLoadError", {message: e.message, path: dataLocation});
+                });
         } else {
             return texturePromise.then((textureObj) => {
                 if (textureObj && textureObj.texture) {
@@ -927,9 +969,6 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
                     let scale = 1 / max;
                     width = textureWidth * scale;
                     height = textureHeight * scale;
-                    if (textureLocation) {
-                        assetManager.setCache(textureLocation, textureObj, this.id);
-                    }
                     this.properties2D = {...this.properties2D, width, height, textureWidth, textureHeight};
                 }
 
@@ -946,6 +985,9 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
                 obj.name = "2d";
                 this.objectCreated(obj);
                 this.shape.add(obj);
+                if (this.actor.layers.indexOf("walk") >= 0) {
+                    this.constructCollider(obj);
+                }
                 publishLoaded();
             });
         }
@@ -1006,6 +1048,13 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
 
         let mergedGeometry;
 
+        // We traverse the nested geometries, and flatten them in the reference to the "obj".
+        // we temporarily set the matrix of obj to identity, apply matrixWorld of each sub object but then
+        // restore obj's matrix. In a typical case when this is called only when things are set up,
+        // this method is called before adding "obj" to shape so obj.matrix is typically an identity anyway.
+
+        let tmpMat = obj.matrix;
+        obj.matrix = new THREE.Matrix4();
         try {
             obj.traverse(c =>{
                 if(c.geometry){
@@ -1033,6 +1082,8 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
             console.error("failed to build the BVH collider for:", obj);
             console.error(err);
             return;
+        } finally {
+            obj.matrix = tmpMat;
         }
 
         let collider = new THREE.Mesh(mergedGeometry);
@@ -1135,13 +1186,17 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
             }
         };
 
+        let newGeometry = toIndexed(geometry, THREE, true);
+
         let boundingBox = new THREE.Box3(
             new THREE.Vector3(-x, -y, -z),
             new THREE.Vector3( x,  y,  z));
 
-        let uv = geometry.getAttribute('uv');
+        newGeometry.parameters = geometry.parameters;
+        let uv = newGeometry.getAttribute('uv');
         normalizeUV(uv.array, boundingBox);
-        return geometry;
+
+        return newGeometry;
     }
 
     makePlaneMaterial(depth, color, frameColor, fullBright) {
@@ -1197,7 +1252,13 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
         if (dataType === "url" || dataType === "dataUri") {
             return fetch(name)
                 .then((resp) => {
-                    if (!resp.ok) throw Error(`fetch failed: ${resp.status} ${resp.statusText}`);
+                    if (!resp.ok) {
+                        let e = {
+                            message: `fetch failed: ${resp.status} ${resp.statusText}`,
+                            path: name
+                        };
+                        throw e;
+                    }
                     return resp.arrayBuffer();
                 }).then((arrayBuffer) => new Uint8Array(arrayBuffer))
         } else if (dataType === "dataId") {
@@ -1431,8 +1492,6 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
     }
 
     doSelectEdit() {
-        this._editMode = true;
-        console.log("doSelectEdit")
         /*
         if (this.renderObject) {
             this.addWireBox(this.renderObject);
@@ -1441,8 +1500,6 @@ export class CardPawn extends mix(Pawn).with(PM_Smoothed, PM_ThreeVisible, PM_Po
     }
 
     doUnselectEdit() {
-        this._editMode = false;
-        console.log("doUnselectEdit")
         /*
         if (this.renderObject) {
             this.removeWireBox(this.renderObject);
@@ -1673,4 +1730,3 @@ function arrayDispose() {
         this.dispose();
     }
 }
-

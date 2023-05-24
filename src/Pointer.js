@@ -2,7 +2,7 @@
 // https://croquet.io
 // info@croquet.io
 
-import { GetPawn, RegisterMixin } from "@croquet/worldcore-kernel";
+import { GetPawn, RegisterMixin } from "./worldcore";
 
 //------------------------------------------------------------------------------------------
 //-- AM_PointerTarget ----------------------------------------------------------------------
@@ -266,15 +266,17 @@ export const PM_Pointer = superclass => class extends superclass {
 
         /* Microverse uses InputManager from Worldcore */
 
-        this.subscribe("input", "pointerDown", this.doPointerDown);
-        this.subscribe("input", "pointerUp", this.doPointerUp);
-        this.subscribe("input", "pointerMove", this.doPointerMove);
-        this.subscribe("input", "click", this.doPointerClick);
-        this.subscribe("input", "wheel", this.doPointerWheel);
-        this.subscribe("input", "doubleDown", this.doPointerDoubleDown);
-        this.subscribe("input", "tap", this.doPointerTap);
-        this.subscribe("input", "keyDown", this.doKeyDown);
-        this.subscribe("input", "keyUp", this.doKeyUp);
+        // immediate handling so handler runs inside of the DOM event handler invocation
+        // and can open links, toggle audio, etc.
+        this.subscribe("input", {event: "pointerDown", handling: "immediate"}, this.doPointerDown);
+        this.subscribe("input", {event: "pointerUp", handling: "immediate"}, this.doPointerUp);
+        this.subscribe("input", {event: "pointerMove", handling: "immediate"}, this.doPointerMove);
+        this.subscribe("input", {event: "click", handling: "immediate"}, this.doPointerClick);
+        this.subscribe("input", {event: "wheel", handling: "immediate"}, this.doPointerWheel);
+        this.subscribe("input", {event: "doubleDown", handling: "immediate"}, this.doPointerDoubleDown);
+        this.subscribe("input", {event: "tap", handling: "immediate"}, this.doPointerTap);
+        this.subscribe("input", {event: "keyDown", handling: "immediate"}, this.doKeyDown);
+        this.subscribe("input", {event: "keyUp", handling: "immediate"}, this.doKeyUp);
 
         this.firstResponders = new Map();
         this.lastResponders = new Map();
@@ -413,10 +415,20 @@ export const PM_Pointer = superclass => class extends superclass {
         }
         let handlerModuleName = this.actor._cardData.avatarEventHandler;
         if (this.has(`${handlerModuleName}$AvatarPawn`, "handlingEvent")) {
-            this.call(`${handlerModuleName}$AvatarPawn`, "handlingEvent", type, target, event);
+            try {
+                this.call(`${handlerModuleName}$AvatarPawn`, "handlingEvent", type, target, event);
+            } catch (e) {
+                console.error(e);
+            }
         }
         if (array) {
-            array.forEach((n) => n.listener.call(target, event));
+            array.forEach((n) => {
+                try {
+                    n.listener.call(target, event);
+                } catch (e) {
+                    console.error(e);
+                }
+            });
         }
     }
 
@@ -426,99 +438,87 @@ export const PM_Pointer = superclass => class extends superclass {
 
     doPointerDown(e) {
         let eventName = "pointerDown";
-        let rc;
-        if (e.source) {
-            rc = this.pointerRaycast(e.source, this.getTargets(eventName));
-        } else {
-            rc = this.pointerRaycast(e.xy, this.getTargets(eventName));
-        }
+        let rc = this.pointerRaycast(e, this.getTargets(eventName));
 
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
-            return this.invokeListeners(eventName, firstResponder, rc, e);
+            this.invokeListeners(eventName, firstResponder, rc, e);
+        } else {
+            if (e.button === 0) {
+                this.isPointerDown = true;
+                if (this.focusPawn !== rc.pawn) {
+                    this.focusPawn = rc.pawn;
+                }
+            }
+            if (this.focusPawn) {
+                this.invokeListeners(eventName, this.focusPawn, rc, e);
+            } else {
+                let lastResponder = this.findLastResponder(e, eventName);
+                if (lastResponder) {
+                    this.invokeListeners(eventName, lastResponder, rc, e);
+                }
+            }
         }
 
-        if (e.button === 0) {
-            this.isPointerDown = true;
-            if (this.focusPawn !== rc.pawn) {
-                this.focusPawn = rc.pawn;
-            }
-        }
-        if (this.focusPawn) {
-            this.invokeListeners(eventName, this.focusPawn, rc, e);
-        } else {
-            let lastResponder = this.findLastResponder(e, eventName);
-            if (lastResponder) {
-                return this.invokeListeners(eventName, lastResponder, rc, e);
-            }
-        }
+        return rc;
     }
 
     doPointerUp(e) {
         let eventName = "pointerUp";
-
-        let rc;
-        if (e.source) {
-            rc = this.pointerRaycast(e.source, this.getTargets(eventName));
-        } else {
-            rc = this.pointerRaycast(e.xy, this.getTargets(eventName));
-        }
+        let rc = this.pointerRaycast(e, this.getTargets(eventName));
 
         this.isPointerDown = false;
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
-            return this.invokeListeners(eventName, firstResponder, rc, e);
+            this.invokeListeners(eventName, firstResponder, rc, e);
+        } else {
+            if (this.focusPawn) {
+                this.invokeListeners(eventName, this.focusPawn, rc, e);
+            } else {
+                let lastResponder = this.findLastResponder(e, eventName);
+                if (lastResponder) {
+                    this.invokeListeners(eventName, lastResponder, rc, e);
+                }
+                // this.focusPawn = null;
+            }
         }
 
-        if (this.focusPawn) {
-            this.invokeListeners(eventName, this.focusPawn, rc, e);
-        }
-
-        let lastResponder = this.findLastResponder(e, eventName);
-        if (lastResponder) {
-            return this.invokeListeners(eventName, lastResponder, rc, e);
-        }
-        // this.focusPawn = null;
+        return rc;
     }
 
     doPointerMove(e) {
         let eventName = "pointerMove";
-
-        let rc;
-        if (e.source) {
-            rc = this.pointerRaycast(e.source, this.getTargets(eventName));
-        } else {
-            rc = this.pointerRaycast(e.xy, this.getTargets(eventName));
-        }
+        let rc = this.pointerRaycast(e, this.getTargets(eventName));
 
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
-            return this.invokeListeners(eventName, firstResponder, rc, e);
-        }
-
-        if (this.hoverPawn !== rc.pawn) {
-            if (this.hoverPawn) {
-                this.invokeListeners("pointerLeave", this.hoverPawn, rc, e);
-            }
-            this.hoverPawn = rc.pawn;
-            if (this.hoverPawn) {
-                this.invokeListeners("pointerEnter", this.hoverPawn, rc, e);
-            }
-        }
-
-        if (this.isPointerDown && this.focusPawn && this.focusPawn === rc.pawn) { // dubious check
-            this.invokeListeners(eventName, this.focusPawn, rc, e);
+            this.invokeListeners(eventName, firstResponder, rc, e);
         } else {
-            let lastResponder = this.findLastResponder(e, eventName);
-            if (lastResponder) {
-                return this.invokeListeners(eventName, lastResponder, rc, e);
+            if (this.hoverPawn !== rc.pawn) {
+                if (this.hoverPawn) {
+                    this.invokeListeners("pointerLeave", this.hoverPawn, rc, e);
+                }
+                this.hoverPawn = rc.pawn;
+                if (this.hoverPawn) {
+                    this.invokeListeners("pointerEnter", this.hoverPawn, rc, e);
+                }
+            }
+
+            if (this.isPointerDown && this.focusPawn && this.focusPawn === rc.pawn) { // dubious check
+                this.invokeListeners(eventName, this.focusPawn, rc, e);
+            } else {
+                let lastResponder = this.findLastResponder(e, eventName);
+                if (lastResponder) {
+                    this.invokeListeners(eventName, lastResponder, rc, e);
+                }
             }
         }
+        return rc;
     }
 
     doPointerClick(e) {
         let eventName = "click";
-        const rc = this.pointerRaycast(e.xy, this.getTargets(eventName));
+        const rc = this.pointerRaycast(e, this.getTargets(eventName));
 
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
@@ -537,7 +537,7 @@ export const PM_Pointer = superclass => class extends superclass {
 
     doPointerDoubleDown(e) {
         let eventName = "pointerDoubleDown";
-        const rc = this.pointerRaycast(e.xy, this.getTargets(eventName, true), true);
+        const rc = this.pointerRaycast(e, this.getTargets(eventName, true), true);
 
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
@@ -551,7 +551,7 @@ export const PM_Pointer = superclass => class extends superclass {
 
     doPointerWheel(e) {
         let eventName = "pointerWheel";
-        const rc = this.pointerRaycast(e.xy, this.getTargets(eventName, true), true);
+        const rc = this.pointerRaycast(e, this.getTargets(eventName, true), true);
 
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
@@ -570,13 +570,7 @@ export const PM_Pointer = superclass => class extends superclass {
 
     doPointerTap(e) {
         let eventName = "pointerTap";
-
-        let rc;
-        if (e.source) {
-            rc = this.pointerRaycast(e.source, this.getTargets(eventName));
-        } else {
-            rc = this.pointerRaycast(e.xy, this.getTargets(eventName));
-        }
+        let rc = this.pointerRaycast(e, this.getTargets(eventName));
 
         let firstResponder = this.findFirstResponder(e, eventName);
         if (firstResponder) {
@@ -645,6 +639,7 @@ export const PM_Pointer = superclass => class extends superclass {
         pe.id = wcEvent.id;
         pe.button = wcEvent.button;
         pe.buttons = wcEvent.buttons;
+        pe.instanceId = rc.instanceId;
         if (rc.ray) {
             pe.ray = {origin: rc.ray.origin.toArray(), direction: rc.ray.direction.toArray()};
         }
