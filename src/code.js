@@ -2,8 +2,8 @@
 // https://croquet.io
 // info@croquet.io
 
-import * as WorldcoreExports from "@croquet/worldcore-kernel";
-const {ViewService, ModelService, GetPawn, Model, Constants} = WorldcoreExports;
+import * as WorldcoreExports from "./worldcore";
+const {ViewService, ModelService, GetPawn, Model, Constants, App} = WorldcoreExports;
 
 import * as WorldcoreThreeExports from "./ThreeRender.js";
 import * as PhysicsExports from "./physics.js";
@@ -58,8 +58,11 @@ function getViewRoot() {
 export const AM_Code = superclass => class extends superclass {
     init(options) {
         super.init(options);
-        this.scriptListeners = new Map();
         this.behaviorManager = this.service("BehaviorModelManager");
+        this.scriptListeners = new Map();
+    }
+
+    initBehaviors(options) {
         if (options.behaviorModules) {
             options.behaviorModules.forEach((name) => { /* name: Bar */
                 let module = this.behaviorManager.modules.get(name);
@@ -679,6 +682,7 @@ class ScriptingBehavior extends Model {
             }
         } catch (e) {
             console.error(`an error occured in ${behaviorName}.${name}() on`, receiver, e);
+            App.messages && App.showMessage(`Error in ${behaviorName}.${name}()`, { level: "error" });
         }
         return result;
     }
@@ -1002,7 +1006,7 @@ export class BehaviorModelManager extends ModelService {
             array.push(modelId);
             behavior.ensureBehavior();
             if (behavior.$behavior.setup) {
-                behavior.future(0).invoke(model[isProxy] ? model._target : model, "setup");
+                behavior.invoke(model[isProxy] ? model._target : model, "setup");
             }
         }
     }

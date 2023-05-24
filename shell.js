@@ -2,7 +2,7 @@
 // https://croquet.io
 // info@croquet.io
 
-import { App } from "@croquet/worldcore-kernel";
+import { App } from "@croquet/croquet";
 
 // shared prefix for shell messages
 const PREFIX = "croquet:microverse:";
@@ -94,6 +94,30 @@ class Shell {
                 console.warn(`shell: popstate location=${location}\ndoes not match portal-${portalId} frame.src=${frame.src}`);
             }
         });
+
+        this.fullscreenBtn = document.getElementById("fullscreenBtn");
+        if (this.fullscreenBtn) {
+            this.fullscreenBtn.onclick = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                if (e.shiftKey) {
+                    document.body.classList.toggle("tilt");
+                    return;
+                }
+
+                if (!document.fullscreenElement) {
+                    // If the document is not in full screen mode
+                    // make the document full screen
+                    document.body.requestFullscreen();
+                } else {
+                    // Otherwise exit the full screen
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+        }
 
         // joystick sends events into primary frame
         this.capturedPointers = {};

@@ -2,12 +2,8 @@
 // https://croquet.io
 // info@croquet.io
 
-import {
-    filterDomEventsOn,
-    closeAllDialogs,
-    hideShellControls,
-} from "./hud.js";
-import { App } from "@croquet/worldcore-kernel";
+import {filterDomEventsOn, closeAllDialogs, hideShellControls} from "./worldMenu.js";
+import { App } from "./worldcore";
 
 let settingsMenu = null;
 let nicknameIsValid;
@@ -17,6 +13,65 @@ let simplerMenu;
 let configuration = {};
 let resolveDialog;
 
+let avatars = [
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/f1.png",
+        skins: {
+            default: "https://models.readyplayer.me/62f56aaf3e172e00545c2502.glb",
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/f2.png",
+        skins: {
+            default: "https://models.readyplayer.me/62f56ad53e172e00545c297d.glb"
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/f3.png",
+        skins: {
+            default: "https://models.readyplayer.me/62f56b0a3e172e00545c2fc9.glb",
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/f4.png",
+        skins: {
+            default: "https://models.readyplayer.me/62fd66f93e172e005443e7cc.glb",
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/m1.png",
+        skins: {
+            default: "https://models.readyplayer.me/62f56a0f3e172e00545c12d4.glb",
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/m2.png",
+        skins: {
+            default:  "https://models.readyplayer.me/62f56a823e172e00545c2055.glb"
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/m3.png",
+        skins: {
+            default: "https://models.readyplayer.me/62f56a4e3e172e00545c1a11.glb",
+        },
+        type: "ReadyPlayerMePerson",
+    },
+    {
+        png: "https://croquet.io/microverse/assets/avatar-images/m4.png",
+        skins: {
+            default: "https://models.readyplayer.me/62fd6a133e172e0054443e36.glb",
+        },
+        type: "ReadyPlayerMePerson",
+    },
+];
+
 export function startSettingsMenu(useEnter, simplerMenuFlag, r) {
     // note that even if called when already in session with a default (Alice) avatar,
     // the user must provide an avatar choice to be able to change the name
@@ -24,12 +79,16 @@ export function startSettingsMenu(useEnter, simplerMenuFlag, r) {
     nicknameIsValid = false;
     avatarIsValid = false;
     simplerMenu = simplerMenuFlag;
+    closeAllDialogs();
     createSettingsMenu(useEnter).then(fillFromPrevious);
+    hideShellControls();
 }
 
 export function startShareMenu(avatar, simplerMenuFlag) {
     simplerMenu = simplerMenuFlag;
+    closeAllDialogs();
     createShareMenu(avatar);
+    hideShellControls();
 }
 
 function createSettingsMenu(useEnter) {
@@ -66,7 +125,7 @@ function createSettingsMenu(useEnter) {
                 <div id="avatarURLPrompt" class="namePrompt">Or, Enter an Avatar URL</div>
                 <div id="avatarURLField" class="nameField avatarNameField allow-select" contenteditable="true"></div>
             </div>
-            <div id="handednessRow">
+            <!-- <div id="handednessRow">
                 <div id="handednessLabel">Hand:</div>
                 <div class="btn-group" id="handedness">
                     <label class="btn btn-radio-button">
@@ -76,7 +135,7 @@ function createSettingsMenu(useEnter) {
                         <input type="radio" name="options" id="right" checked><span class="handedness-label">Right</span>
                     </label>
                 </div>
-            </div>
+            </div> -->
             <div id="dialogEnterButton" class="dialogButtonsHolder disabled">
                 <div id="enterButton">Enter</div>
             </div>
@@ -95,44 +154,38 @@ function createSettingsMenu(useEnter) {
     settingsMenu = div.querySelector("#joinDialog");
 
     let closeButton = settingsMenu.querySelector("#close-button");
-    let enterButton = settingsMenu.querySelector("#enterButton");
-    let acceptButton = settingsMenu.querySelector("#acceptButton");
-    let cancelButton = settingsMenu.querySelector("#cancel-button");
-    let handednessRow = settingsMenu.querySelector("#handednessRow");
-    let dialogHandedness = settingsMenu.querySelector("#handedness");
+    let enterButton = settingsMenu.querySelector('#enterButton');
+    let acceptButton = settingsMenu.querySelector('#acceptButton');
+    let cancelButton = settingsMenu.querySelector('#cancel-button');
+    // let handednessRow = settingsMenu.querySelector("#handednessRow");
+    // let dialogHandedness = settingsMenu.querySelector("#handedness");
     let dialogTitle = settingsMenu.querySelector("#dialogTitle");
     let joinPrompt = settingsMenu.querySelector("#joinPrompt");
     let joinPromptBlurb = settingsMenu.querySelector("#joinPromptBlurb");
     let settingsTitle = settingsMenu.querySelector("#settings-title");
     let dialogEnterButton = settingsMenu.querySelector("#dialogEnterButton");
-    let dialogAcceptCancelButtons = settingsMenu.querySelector(
-        "#dialogAcceptCancelButtons"
-    );
+    let dialogAcceptCancelButtons = settingsMenu.querySelector("#dialogAcceptCancelButtons");
 
     let selectAvatar = settingsMenu.querySelector("#selectAvatar");
-    let avatarSelections = settingsMenu.querySelector(
-        "#dialogAvatarSelections"
-    );
+    let avatarSelections = settingsMenu.querySelector("#dialogAvatarSelections");
     let avatarURL = settingsMenu.querySelector("#avatarURL");
 
-    let nameField = settingsMenu.querySelector("#nameField");
-    nameField.addEventListener("keydown", (evt) => nameFieldKeydown(evt));
-    nameField.addEventListener("input", (evt) => nameFieldChanged(evt));
-    nameField.addEventListener("paste", (evt) => evt.stopPropagation());
+    let nameField = settingsMenu.querySelector('#nameField');
+    nameField.addEventListener('keydown', (evt) => nameFieldKeydown(evt));
+    nameField.addEventListener('input', (evt) => nameFieldChanged(evt));
+    nameField.addEventListener('paste', (evt) => evt.stopPropagation());
 
-    let avatarURLField = settingsMenu.querySelector("#avatarURLField");
-    avatarURLField.addEventListener("input", (evt) =>
-        avatarURLFieldChanged(evt)
-    );
-    avatarURLField.addEventListener("paste", (evt) => evt.stopPropagation());
-    avatarURLField.addEventListener("keydown", (evt) => evt.stopPropagation());
+    let avatarURLField = settingsMenu.querySelector('#avatarURLField');
+    avatarURLField.addEventListener('input', (evt) => avatarURLFieldChanged(evt));
+    avatarURLField.addEventListener('paste', (evt) => evt.stopPropagation());
+    avatarURLField.addEventListener('keydown', (evt) => evt.stopPropagation());
 
     enterButton.onclick = () => dialogCloseEnter();
     acceptButton.onclick = () => accept();
     closeButton.onclick = () => closeAllDialogs();
     cancelButton.onclick = () => closeAllDialogs();
 
-    dialogHandedness.addEventListener("input", () => handednessChanged());
+    // dialogHandedness.addEventListener("input", () => handednessChanged());
 
     if (dialogTitle) {
         dialogTitle.classList.toggle("hidden", !useEnter);
@@ -165,9 +218,9 @@ function createSettingsMenu(useEnter) {
         avatarURL.style.display = simplerMenu ? "none" : "flex";
     }
 
-    if (handednessRow) {
-        handednessRow.style.display = simplerMenu ? "none" : "flex";
-    }
+    // if (handednessRow) {
+    // handednessRow.style.display = simplerMenu ? "none" : "flex";
+    // }
 
     if (joinPromptBlurb && simplerMenu) {
         joinPromptBlurb.textContent = "Specify a nickname and press Enter.";
@@ -185,9 +238,9 @@ function fillFromPrevious() {
     const localSettings = window.settingsMenuConfiguration || {};
     const oldNick = localSettings.nickname;
     const oldAvatarURL = simplerMenu ? null : localSettings.avatarURL;
-    const oldHandedness = localSettings.handedness;
+    // const oldHandedness = localSettings.handedness;
     if (oldNick) {
-        const nameField = settingsMenu.querySelector("#nameField");
+        const nameField = settingsMenu.querySelector('#nameField');
         nameField.textContent = oldNick;
         nameFieldChanged();
     }
@@ -196,19 +249,20 @@ function fillFromPrevious() {
         if (predefined) {
             avatarSelected(predefined);
         } else {
-            const avatarURLField =
-                settingsMenu.querySelector("#avatarURLField");
+            const avatarURLField = settingsMenu.querySelector('#avatarURLField');
             avatarURLField.textContent = oldAvatarURL;
             avatarURLFieldChanged();
         }
     }
+    /*
     if (oldHandedness) {
         if (oldHandedness === "Left") {
-            const handedness = settingsMenu.querySelector("#handedness");
+            const handedness = settingsMenu.querySelector('#handedness');
             const l = handedness.querySelector("#left");
             l.checked = true;
         }
     }
+    */
     updateButtonState();
 }
 
@@ -221,25 +275,21 @@ function nameFieldChanged(evt) {
     // first trim start and end whitespace and remove any line feeds that have
     // snuck in.  then replace any non-ascii characters and see if that reduces
     // the length.  if so, show the reduced string
+    console.log("nameFieldChanged");
     if (evt) {
         evt.stopPropagation();
         evt.preventDefault();
     }
-    const nameField = document.getElementById("nameField");
-    let value = nameField.textContent.trim().replace(/\r?\n|\r/g, "");
+    const nameField = document.getElementById('nameField');
+    let value = nameField.textContent.trim().replace(/\r?\n|\r/g, '');
     const beforeFilter = value.length;
     // value = value.replace(/[\u0250-\ue007]/g, '').trim().slice(0,12).trim();
     // const unusable = value.replace(/[\x20-\x7F]/g, '');
-    value = value
-        .replace(/[^\x20-\x7F]/g, "")
-        .trim()
-        .slice(0, 12)
-        .trim();
-    const div = document.getElementById("nameFilterWarning");
-    div.innerHTML =
-        value.length === beforeFilter
-            ? "<br/>"
-            : `Nickname filtered to "${value}"`;
+    value = value.replace(/[^\x20-\x7F]/g, '').trim().slice(0, 12).trim();
+    const div = document.getElementById('nameFilterWarning');
+    div.innerHTML = value.length === beforeFilter ?
+        '<br/>' :
+        `Nickname filtered to "${value}"`;
 
     if (value.length >= 1 && value.length <= 12) {
         configuration.nickname = value;
@@ -255,23 +305,24 @@ function avatarURLFieldChanged(evt) {
         evt.preventDefault();
         evt.stopPropagation();
     }
-    const avatarURLField = settingsMenu.querySelector("#avatarURLField");
+    let avatarURLField = settingsMenu.querySelector('#avatarURLField');
     let value = avatarURLField.textContent.trim(); // may be empty
 
     avatarSelected({
         url: value,
-        type: "ReadyPlayerMe",
+        type: "ReadyPlayerMePerson",
+        "skins": {
+            "default": value,
+        }
     });
 }
 
 function updateButtonState() {
     const valid = nicknameIsValid && (simplerMenu || avatarIsValid);
-    const dialogEnterButton = settingsMenu.querySelector("#dialogEnterButton");
-    dialogEnterButton.classList.toggle("disabled", !valid);
-    const dialogAcceptCancelButtons = settingsMenu.querySelector(
-        "#dialogAcceptCancelButtons"
-    );
-    dialogAcceptCancelButtons.classList.toggle("disabled", !valid);
+    const dialogEnterButton = settingsMenu.querySelector('#dialogEnterButton');
+    dialogEnterButton.classList.toggle('disabled', !valid);
+    const dialogAcceptCancelButtons = settingsMenu.querySelector('#dialogAcceptCancelButtons');
+    dialogAcceptCancelButtons.classList.toggle('disabled', !valid);
 }
 
 function closeDialog(changed) {
@@ -284,13 +335,11 @@ function closeDialog(changed) {
 }
 
 function dialogCloseEnter() {
-    console.log("enter", configuration);
     updateLocalConfig();
     closeDialog(true);
 }
 
 function accept() {
-    console.log("accept", configuration);
     updateLocalConfig();
     // if (avatar) {
     //     avatar.setSettings(configuration);
@@ -303,7 +352,7 @@ function updateLocalConfig() {
     const existing = window.settingsMenuConfiguration || {};
     window.settingsMenuConfiguration = {
         ...existing,
-        ...configuration,
+        ...configuration
     };
     if (simplerMenu) {
         window.settingsMenuConfiguration.avatarURL = null;
@@ -311,56 +360,15 @@ function updateLocalConfig() {
     }
 }
 
-let avatars = [
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/f1.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/0725566e-bdc0-40fd-a22f-cc4c333bcb90.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/f2.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/50ef7f5f-b401-4b47-a8dc-1c4eda1ba8d2.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/f3.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/b5c04bb2-a1df-4ca4-be2e-fb54799e9030.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/f4.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/b480f1d0-3a0f-4766-9860-c213e6c50f3d.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/m1.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/05d16812-01de-48cc-8e06-c6514ba14a77.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/m2.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/2955d824-31a4-47e1-ba58-6c387c63b660.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/m3.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/579d4ec8-ade3-49ea-8b52-2ea5fe097f7d.glb",
-        type: "ReadyPlayerMe",
-    },
-    {
-        png: "https://croquet.io/microverse/assets/avatar-images/m4.png",
-        url: "https://d1a370nemizbjq.cloudfront.net/535100f3-c58c-4fd8-9fb9-4ee090e844bf.glb",
-        type: "ReadyPlayerMe",
-    },
-];
-
 function avatarSelected(entry) {
-    let value = entry.url;
-    let urlValid = /https?:[a-zA-Z0-9/.-]+\.glb/.test(value);
+    console.log("avatarSelected");
+    let value = entry.url || entry.skins.default;
+    let urlValid = /(https?:[a-zA-Z0-9/.-]+\.glb)|(\.\/assets\/[a-zA-Z0-9/.-_]+\.glb)/.test(value);
 
     if (urlValid && !simplerMenu) {
-        configuration.avatarURL = entry.url;
+        configuration.avatarURL = entry.url || entry.skins.default;
         configuration.type = entry.type;
+        configuration.skins = {default: entry.url || entry.skins.default};
     }
 
     if (!settingsMenu) {
@@ -372,7 +380,7 @@ function avatarSelected(entry) {
     let holder = settingsMenu.querySelector("#avatarList");
     for (let i = 0; i < holder.childNodes.length; i++) {
         let child = holder.childNodes[i];
-        if (child.getAttribute("avatarURL") === entry.url) {
+        if (child.getAttribute("avatarURL") === value) {
             child.setAttribute("selected", true);
             avatarIsValid = true;
         } else {
@@ -380,22 +388,25 @@ function avatarSelected(entry) {
         }
     }
 
-    if (value && value === entry.url) {
+    if (value && (value === entry.url || value === entry.skins.default)) {
         avatarIsValid = urlValid;
     } else {
+        let avatarURLField = settingsMenu.querySelector('#avatarURLField');
         avatarURLField.textContent = "";
     }
 
     updateButtonState();
 }
 
+/*
 function handednessChanged() {
     let left = settingsMenu.querySelector("#left");
     configuration.handedness = !left.checked ? "Right" : "Left";
 }
+*/
 
 function findPredefined(url) {
-    return avatars.find((entry) => entry.url === url);
+    return avatars.find((entry) => entry.url === url || entry.skins?.default === url);
 }
 
 function populateAvatarSelection() {
@@ -413,7 +424,7 @@ function populateAvatarSelection() {
         } else {
             div.style.backgroundImage = `url(./assets/avatar-images/${entry.png}.png)`;
         }
-        div.setAttribute("avatarURL", entry.url);
+        div.setAttribute("avatarURL", entry.url || entry.skins.default);
         holder.appendChild(div);
     });
 }
@@ -426,13 +437,18 @@ function createShareMenu(avatar) {
         <button id="close-button" type="button" class="btn btn-danger btn-x topright">x</button>
         <div id="share-container" class="content-container">
             <div id="share-title" class="panel-title">Invite Users<br></div>
-            <div class="share-settings-label">Send an invite link to a friend</div>
+            <div class="promptBlurb">Scan QR code or click to open a new browser tab in the same session.</div>
+            <div id="share-qr"></div>
+
+            <div class="share-settings-label">Copy Share Link</div>
             <div class="share-menu-row">
                 <div id="copy-link" class="copy-link allow-select">generated link</div>
                 <button id="copy-button" type="button" class="btn btn-outline-success">Copy</button>
             </div>
-            <div class="promptBlurb">Or, scan QR code or click to open a new browser tab in the same session.</div>
-            <div id="share-qr"></div>
+            <div id="save-vrse-row" class="share-menu-row">
+                <div class="share-settings-label">Save world as VRSE file</div>
+                <button id="save-button" type="button" class="btn btn-outline-success">Download</button>
+            </div>
         </div>
     </div>`.trim();
 
@@ -469,6 +485,9 @@ function createShareMenu(avatar) {
 
     link.textContent = url;
 
+    saveWorld.onclick = (_evt) => savePressed(avatar);
+    copyLink.onclick = (_evt) => copyPressed(avatar);
+
     if (simplerMenu) {
         saveVrseRow.style.display = "none";
     }
@@ -481,9 +500,7 @@ function savePressed(myAvatar) {
 
     let div = document.createElement("a");
 
-    let dataStr =
-        "data:text/json;charset=utf-8," +
-        encodeURIComponent(JSON.stringify(model.saveData(), null, 4));
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(model.saveData(), null, 4));
 
     div.setAttribute("href", dataStr);
     div.setAttribute("download", "scene.vrse");
@@ -496,10 +513,7 @@ function copyPressed(_myAvatar) {
 
     let clipboardAPI = () => {
         if (navigator.clipboard) {
-            return navigator.clipboard.writeText(url).then(
-                () => true,
-                () => false
-            );
+            return navigator.clipboard.writeText(url).then(() => true, () => false);
         }
         return Promise.resolve(false);
     };

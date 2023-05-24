@@ -2,7 +2,7 @@
 // https://croquet.io
 // info@croquet.io
 
-import {ModelService, ViewService, GetPawn, v3_transform} from "@croquet/worldcore-kernel";
+import {ModelService, ViewService, GetPawn, v3_transform} from "../worldcore";
 import {THREE} from "../ThreeRender.js";
 import {getTextGeometry, HybridMSDFShader, MSDFFontPreprocessor, getTextLayout} from "@croquet/hybrid-msdf-text";
 import {CardActor, CardPawn} from "../card.js";
@@ -82,7 +82,8 @@ export class KeyFocusManager extends ViewService {
         }
         this.keyboardInput = obj;
         if (obj) {
-            this.hiddenInput.focus();
+            setTimeout(() => this.hiddenInput.focus(), 0);
+
         }
     }
 
@@ -215,7 +216,7 @@ export class FontViewManager extends ViewService {
         if (this.isLoading[name]) {return this.isLoading[name];}
 
         let root = window.microverseDir ? window.microverseDir : "./";
-        
+
         let path = root + "assets/fonts";
         let image = `${path}/${name}.png`;
 

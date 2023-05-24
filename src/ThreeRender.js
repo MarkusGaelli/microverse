@@ -24,7 +24,7 @@ import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm//webxr/XRControllerModelFactory.js';
 
-import { PM_Visible, PM_Camera, RenderManager } from "@croquet/worldcore-kernel";
+import { PM_Visible, PM_Camera, RenderManager } from "./worldcore";
 
 //------------------------------------------------------------------------------------------
 //-- ThreeVisible  -------------------------------------------------------------------------
@@ -205,6 +205,7 @@ const PM_ThreeCamera = superclass => class extends PM_Camera(superclass) {
             uv: hit.uv ? hit.uv.toArray() : undefined,
             normal: normal ? normal.toArray() : undefined,
             distance: hit.distance,
+            instanceId: hit.instanceId,
             ray: this.raycaster.ray.clone()
         };
     }
@@ -444,6 +445,7 @@ class ThreeRenderManager extends RenderManager {
 
         this.renderer = new THREE.WebGLRenderer(options);
         this.renderer.shadowMap.enabled = true;
+        // this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
         this.vrButtonStyleSet = false;
 

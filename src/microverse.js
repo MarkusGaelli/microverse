@@ -4,7 +4,7 @@
 
 import {
     Constants, App, ModelRoot, ViewRoot, StartWorldcore,
-    InputManager, PlayerManager, q_euler} from "@croquet/worldcore-kernel";
+    InputManager, PlayerManager, q_euler} from "./worldcore";
 import { THREE, ThreeRenderManager } from "./ThreeRender.js";
 import { PhysicsManager } from "./physics.js";
 /*import { AgoraChatManager } from "./agoraChat.js"; */
@@ -23,9 +23,6 @@ import { PortalActor } from "./portal.js";
 import { WorldSaver } from "./worldSaver.js";
 import { startSettingsMenu } from "./settingsMenu.js";
 
-// apps -------------------------------------------
-import { MultiBlaster } from '../apps/multiblaster.js';
-
 import JSZip from 'jszip';
 import * as fflate from 'fflate';
 import {AssetManager} from "./wcAssetManager.js";
@@ -36,7 +33,7 @@ const defaultAvatarNames = [
 
 const defaultSystemBehaviorDirectory = "behaviors/croquet";
 const defaultSystemBehaviorModules = [
-    "avatarEvents.js", "billboard.js", "elected.js", "menu.js", "pdfview.js", "physics.js", "rapier.js", "scrollableArea.js", "singleUser.js", "stickyNote.js", "halfBodyAvatar.js", "propertySheet.js", "dragAndDrop.js", "gizmo.js"
+    "avatarEvents.js", "billboard.js", "elected.js", "menu.js", "pdfview.js", "physics.js", "rapier.js", "scrollableArea.js", "singleUser.js", "stickyNote.js", "halfBodyAvatar.js", "fullBodyAvatar.js", "propertySheet.js", "dragAndDrop.js", "gizmo.js"
 ];
 
 let AA = true;
@@ -366,7 +363,7 @@ class MyPlayerManager extends PlayerManager {
         }
     }
 
-    playerEnteredWorld(player) {
+    playerEnteredWorld(_player) {
         // console.log(frameName(), "playerEnteredWorld", player);
         this.publish("playerManager", "playerCountChanged");
     }
@@ -409,7 +406,6 @@ class MyModelRoot extends ModelRoot {
     init(options, persistentData) {
         super.init(options);
         let appManager = this.service("MicroverseAppManager");
-        appManager.add(MultiBlaster);
         appManager.add(TextFieldActor);
         appManager.add(PortalActor);
 

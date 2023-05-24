@@ -2,17 +2,15 @@
 // https://croquet.io
 // info@croquet.io
 
-import {
-    filterDomEventsOn,
-    closeAllDialogs,
-    hideShellControls,
-} from "./hud.js";
+import {filterDomEventsOn, closeAllDialogs, hideShellControls} from "./worldMenu.js";
 
 let simplerMenu;
 
 export function startHelpMenu(simplerMenuFlag) {
     simplerMenu = simplerMenuFlag;
+    closeAllDialogs();
     createHelpMenu();
+    hideShellControls();
 }
 
 function createHelpMenu() {
@@ -68,8 +66,7 @@ function createHelpMenu() {
                             <p class="table-head">Home</p>
                             <p class="table-desc">Reset location back to original landing place.</p>
                         </td>
-                        <td class="icon-column"><i class="fas fa-regular fa-house"></i>
-                        </td>
+                        <td class="icon-column"><i class="fas fa-solid fa-house-user icons"></i></td>
                     </tr>
                     <tr class="help-row">
                         <td>
@@ -81,30 +78,23 @@ function createHelpMenu() {
                     <tr class="help-row" id="import-row">
                         <td>
                             <p class="table-head">Import</p>
-                            <p class="table-desc">Import from your device or drag and drop it in to the Microverse.</p>
-                            <p class="table-desc">
-                            Supported formats are:<br>
-                            
-                            <b>3D:</b> .glb, .obj, .fbx, .vrml
-                            <br>
-                            <b>Files:</b> svg, png, jpeg, gif, .pdf
-                            
-                            </p>
+                            <p class="table-desc">Import any of these formats from your desktop directly
+                                 into the Microverse World. Either drag and drop, or choose the import menu item.</p>
                         </td>
                         <td class="icon-column">
                             <div class="icons">
-                                <i class="fa-solid fa-upload menu-icon"></i>
+                                <div class="help-pane-icon import-icon help-menu-icon"></div>
                             </div>
                         </td>
                      </tr>
                      <tr class="help-row" id="connect-row">
                          <td>
                              <p class="table-head">Connect</p>
-                             <p class="table-desc">Link your text editor to edit behavior file code.</p>
+                             <p class="table-desc">Click connect to link your text editor to edit behavior files.</p>
                          </td>
                          <td class="icon-column">
                              <div class="icons">
-                                <i class="fa-solid fa-link menu-icon"></i>
+                                 <div class="help-pane-icon connect-icon help-menu-icon"</div>
                              </div>
                          </td>
                      </tr>
@@ -115,7 +105,7 @@ function createHelpMenu() {
                          </td>
                          <td class="icon-column">
                              <div class="icons">
-                                <i class="fas fa-user-plus"></i>
+                                 <div class="help-pane-icon share-icon help-menu-icon"></div>
                              </div>
                          </td>
                      </tr>
@@ -126,7 +116,7 @@ function createHelpMenu() {
                          </td>
                          <td class="icon-column">
                              <div class="icons">
-                                <i class="fa-solid fa-gear menu-icon"></i>
+                                 <div class="help-pane-icon settings-icon help-menu-icon"></div>
                              </div>
                          </td>
                     </tr>
@@ -146,14 +136,12 @@ function createHelpMenu() {
     closeButton.onclick = () => closeAllDialogs();
 
     if (simplerMenu) {
-        ["manipulate-row", "import-row", "connect-row", "settings-row"].forEach(
-            (n) => {
-                let e = helpMenu.querySelector(`#${n}`);
-                if (e) {
-                    e.remove();
-                }
+        ["manipulate-row", "import-row", "connect-row", "settings-row"].forEach((n) => {
+            let e = helpMenu.querySelector(`#${n}`);
+            if (e) {
+                e.remove();
             }
-        );
+        });
     }
 
     document.body.appendChild(helpMenu);

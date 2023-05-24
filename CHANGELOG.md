@@ -5,6 +5,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 We generally group weekly changes into one dated entry on Fridays.
 
+## 2023-05-19
+### Changed
+- assetLoadError takes a serializable object as argument.
+- github workflow cleaned up.
+- Include a version of Worldcore in the repo.
+- Use Croquet OS 1.1.0-22.
+
+### Fixed
+- Make video saveable as vrse.
+
+### Added
+- Some vector functions.
+
+
+## 2023-05-12
+### Fixed
+- Some issues around full body avatars are ironed out.
+
+### Added
+- Sets can be stored in the persistent data.
+- the instanceId property is added to user events.
+- assetLoadError Behavior can show a load error image when asset file is not available.
+
+### Changed
+- Use THREE.js version 149.
+
+## 2023-05-05
+### Added
+- publish a message when asset loading fails
+- Ready Player Me full body avatar support is added.
+
+### Changed
+- use fillCacheIfAbsent more thoroughly
+
+## 2023-04-21
+### Changed
+- use terser and not uglify
+
+## 2023-04-14
+### Changed
+- wasd key down also make avatar start falling.
+- user input event handlers are made immediate.
+
+### Fixed
+- Gizmo rotation is made sane.
+
+## 2023-04-07
+### Fixed
+- Dolby.io echo cancellation is fixed by calling getUserMedia() carefully.
+
+### Changed
+- View side user event handling uses immediate event handling.
+
+### Added
+- Some documentations added.
+
 ## 2023-02-10
 ### Added
 - show hit point in XR
