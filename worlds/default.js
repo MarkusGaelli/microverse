@@ -9,7 +9,7 @@ export function init(Constants) {
 
     Constants.UserBehaviorDirectory = "behaviors/default";
     Constants.UserBehaviorModules = [
-        "demo.js", "lights.js", "bouncingBall.js", "bitcoinTracker.js", "spin.js", "openPortal.js", "urlLink.js", "cradle.js", // "pendulum.js"
+        "demo.js", "lights.js", "bouncingBall.js", "bitcoinTracker.js", "finnhubioTracker.js", "spin.js", "openPortal.js", "urlLink.js", "cradle.js", // "pendulum.js"
     ];
 
     const frameColor = 0x888888;
@@ -148,7 +148,7 @@ export function init(Constants) {
         },
         {
             card: {
-                name: "bitcointracker",
+                name: "appletracker",
                 translation: [-5, 0.6, -16.87],
                 rotation: [0, 0, 0],
                 scale: [3, 3, 3],
@@ -162,7 +162,7 @@ export function init(Constants) {
                 // color: 0xffffff,
                 depth: 0.05,
                 cornerRadius: 0.1,
-                behaviorModules: ["Elected", "BitcoinTracker"],
+                behaviorModules: ["Elected", "FinnHubIOTracker"],
             },
             id: "main",
         },
@@ -174,7 +174,7 @@ export function init(Constants) {
                 parent: "main",
                 type: "2d",
                 fileName: "BitcoinSign.svg",
-                dataLocation: "3N4qGVniVE2vDgL1m_b7BLvYMZP0LHvOv8wTRxL1nv1wJjo6Pj10YWEoJyIrPWA7PWAtPCE_Oys6YCchYTthCSoYLDciBz0PJR8tDBYqfQk2Lzg3ORsFGRcXfGEnIWAtPCE_Oys6YCMnLTwhOCs8PSthLT9jIn4je3speQcKKQQLCgoNfgwnKTY3Y30oAyUJG3oGO3k-CX4ZdyUKF2EqLzovYTx3AAgWARoHHQsUHiU9An0NenstIB0FNwc6Axl-PgJ-JHo9fTgpHSsIABs",
+                dataLocation: "/assets/SVG/apple.svg",
                 depth: 0.05,
                 color: 0xffffff,
                 frameColor: frameColor,
